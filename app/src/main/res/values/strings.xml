@@ -4,10 +4,17 @@
     // INFORMATION AND INSTRUCTIONS
     <string name="acknowledgments">Acknowledgments</string>
     <string name="sources">
-    Volcano image and dinosaurs from pixabay.com\n
-    Tom Cruise from google and Tom Cruise’s mom\n
-    Button noises and music from soundjay.com\n
-    Awesome app by Michelle Lee and Bri Garbo.</string>
+        &#160;- Volcano image and dinosaurs from pixabay.com\n
+        - Tom Cruise from google and Tom Cruise’s mom\n
+        - Thank you to Kenny Loggins for being a hero\n
+        - Dinosaur sounds from freesound.org\n
+        - Music from freemidi.org\n
+        - Audio conversion from aconvert.com\n
+        - PNG conversion from lunapic.com\n
+        - Android icons from material.io\n
+        - Notification guide from ptyagi techLog blog\n
+        - Pedometer example from Google open source\n
+        - Awesome app by Michelle Lee and Bri Garbo.</string>
     <string name="instructions">LAUNCH! THAT! APP!\n
 \nSo you’ve decided to step into the DANGER ZONE?! You’re so brave. Now that you’ve set your name, it’s time to understand the DANGER.
     You can walk at any time by selecting the WALK option on the main screen. Choose how long you’d like to walk, and we’ll load a random
@@ -18,7 +25,20 @@
     <string name="information">HOW TO PLAY:</string>
     <string name="ok_label">OK</string>
     <string name="ack_title">Acknowledgments</string>
-    <string name="ack_list">FILL IN</string>
+    <string name="developer_title">Developer Notes</string>
+    <string name="developer_notes">
+        Design Considerations:\n
+        - We decided not to add moving images to the app as we did not want people to be staring at
+        the screen while they were out for a walk and risk getting injured. This app is first and
+        foremost a fitness app that is trying to be more interesting than a pedometer, so it is not
+        a game that you have to constantly look at the screen for.\n
+        - We did not implement app wide volume controls as we felt most users manage sound at a global
+        level on their devices for sensitive situations. An example of such a situation would be at the movies
+        or during a meeting. Most people would turn off their phones completely, put them on silent, etc.\n\n
+
+        Future Improvements:\n
+
+    </string>
 
     // MAIN FRAGMENT CONTROLS
     <string name="walk_button">Walk</string>
@@ -28,7 +48,7 @@
 
     // SETTINGS XML
     <string name="notifications_on_off">Notifications</string>
-    <string name="current_settings">Current Interval:&#160;</string>
+    <string name="current_settings">Current interval is set to:&#160;</string>
     <string name="notification_interval">Interval</string>
     <string name="notification_minutes">Minutes</string>
 
@@ -49,6 +69,10 @@
     <string name="title_information_blurb">Select a title from the list to select a new title.</string>
     <string name="steps_walked">Steps walked (steps)</string>
     <string name="steps_default">0 steps</string>
+    <string name="new_title">New Title Earned!</string>
+    <string name="new_title_blurb">Ahh Fresh Meat! We have another one trying to escape what lurks beneath the seat&#8230;how will you fare?</string>
+    <string name="new_achievement">New Achievement Earned!</string>
+    <string name="new_achievement_blurb">&#9833;And then a hero comes along&#8230;you\'re fearless aren\'t you? Some might even call you a Danger Seeker!</string>
 
     // INITIAL STARTUP DIALOG
     <string name="welcome_title">You are now entering the danger zone&#8230;</string>
@@ -70,7 +94,10 @@
     <string name="walk">Walk!</string>
     <string name="time_selection">SELECT WALK TIME: </string>
     <string name="walk_title">WALK FOR YOUR LIFE!</string>
-    <string name="walk_scenario">the very important scenario information about not getting eaten by a dinosaur goes here!!</string>
+    <string name="walk_scenario">You’re sitting at your desk, working, when suddenly the room begins to rumble. <i>Thump. <b>Thump.</b></i>
+        You turn around as the vibrations approach, growing louder, when a <i>roar</i> cuts through the office – and as the tyrannosaurus
+        lifts its scaley head to peer at you with beady eyes, you realize you need to <i>move.</i> \n\n
+        <i>Better start walking.</i></string>
 
     // END WALK
     <string name="victory_title">RESULTS</string>
@@ -82,6 +109,9 @@
     <string name="failure_text">YOU GOT EATEN!</string>
     <string name="failure_text2">Better walk faster next time…</string>
     <string name="success_text">Success!</string>
+    <string name="dino_title_blurb">Pff that oversized chicken had nothing on you. Dino-mite!</string>
+    <string name="dino_wrangler">Dino Wrangler</string>
+    <string name="dino_achievement_blurb">Humans are friends, not food silly dinosaur. A tried and true Dino Wrangler you are!</string>
 
     // WALK ACTIVITY
     <string name="pause">Pause</string>

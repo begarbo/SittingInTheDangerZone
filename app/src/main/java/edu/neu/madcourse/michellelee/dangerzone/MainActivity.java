@@ -33,6 +33,11 @@ import java.util.Random;
 import edu.neu.madcourse.michellelee.dangerzone.notifications.SettingsActivity;
 import edu.neu.madcourse.michellelee.dangerzone.realtimeDatabase.models.User;
 
+/**
+ * This activity is the main menu of the app. On initial startup it asks for a user name and initializes
+ * app-wide data that will be used. It also adds this user instance to Firebase. The main menu has buttons
+ * to the other activities in the app.
+ */
 public class MainActivity extends AppCompatActivity {
 
     SharedPreferences preferences;
@@ -45,14 +50,16 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Initialize Shared Preferences
+        // Initialize Shared Preferences which will be heavily used on first start to initialize the user's profile
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
         editor = preferences.edit();
 
         // Ask if this is the first startup of the app as we need to get the user name
-        isInitialStartup();
+        if (preferences.getBoolean("initial startup", true)) {
+            isInitialStartup(); // Initial startup routine gets the user name, adds them to Firebase, and intializes their user profile
+        }
 
-        // Settings button
+        // Settings button to start the Settings activity
         View settingsButton = findViewById(R.id.settings_button);
         settingsButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -62,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Walk introduction screen
+        // Walk introduction screen that allows the user to select the times they want to walk and start that activity
         View walkIntroButton = findViewById(R.id.walk_button);
         walkIntroButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -72,7 +79,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // User profile
+        // User profile button accesses all their user specific data from app usage
         View userProfile = findViewById(R.id.profile_button);
         userProfile.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -82,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Information and instructions button
+        // Information and instructions button on how to play and about the developers
         View instructionsButton = findViewById(R.id.instructions_button);
         instructionsButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -94,11 +101,11 @@ public class MainActivity extends AppCompatActivity {
 
         // Create notification channel for the app
        createNotificationChannel();
-
     }
 
     /**
-     * Create notification channel
+     * Create notification channel for the app. The app sends notifications based on an interval
+     * timer to remind the user to play.
      */
     private void createNotificationChannel() {
         // Create the NotificationChannel, but only on API 26+ because
@@ -109,119 +116,121 @@ public class MainActivity extends AppCompatActivity {
             int importance = NotificationManager.IMPORTANCE_DEFAULT;
             NotificationChannel channel = new NotificationChannel("CHANNEL_ID", name, importance);
             channel.setDescription(description);
-            // Register the channel with the system; you can't change the importance
-            // or other notification behaviors after this
+            // Register the channel with the system
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
         }
     }
 
     /**
-     * Initial startup routine that gathers user information for the app experience and Firebase
+     * Initial startup routine that gathers user information for the app experience and Firebase.
      */
     private void isInitialStartup() {
+        // Set up views for the dialog to ask for the user name
+        LayoutInflater startInflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);  // Get layout inflater
+        final View dialogView = startInflater.inflate(R.layout.initial_start_dialog, null);     // Get dialog view
+        final EditText usernameEntry = (EditText) dialogView.findViewById(R.id.username_input); // Get edit text view
+        final Button enterUserName = (Button) dialogView.findViewById(R.id.enter_username); // Button to submit username
 
-        // If this is the first time we are opening the app
-        if (preferences.getBoolean("initial startup", true)) {
-            // Set up views
-            LayoutInflater startInflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);  // Get layout inflater
-            final View dialogView = startInflater.inflate(R.layout.initial_start_dialog, null);     // Get dialog view
-            final EditText usernameEntry = (EditText) dialogView.findViewById(R.id.username_input); // Get edit text view
-            final Button enterUserName = (Button) dialogView.findViewById(R.id.enter_username); // Button to submit username
+        // Dialog to ask for user name
+        final AlertDialog.Builder startBuilder = new AlertDialog.Builder(this);
+        startBuilder.setView(dialogView);    // Set view to initial start dialog
+        // Set up positive button to save user name information that the user enters as well as initialize
+        // shared preferences for this instance's app
+        startBuilder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+                // Get username information from the edit text and convert it to a string
+                StringBuilder userName = new StringBuilder();
+                userName.append(usernameEntry.getText());
+                String userNameString = userName.toString();
 
-            // Dialog to ask for user name
-            final AlertDialog.Builder startBuilder = new AlertDialog.Builder(this);
-            startBuilder.setView(dialogView);    // Set view to initial start dialog
-            // Set up positive button to save user name information that the user enters as well as initialize
-            // shared preferences for this instance's app
-            startBuilder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog, int which) {
-                    // Get username information from the edit text and convert it to a string
-                    StringBuilder userName = new StringBuilder();
-                    userName.append(usernameEntry.getText());
-                    String userNameString = userName.toString();
+                // Update shared preferences with default values for the user profile
+                editor.putString("username", userNameString);
+                editor.apply();
+                editor.putInt("level", 1);
+                editor.apply();
+                editor.putInt("seconds walked", 0);
+                editor.apply();
+                editor.putInt("steps walked", 0);
+                editor.apply();
+                editor.putInt("# titles", 1);
+                editor.apply();
+                editor.putString("title", "Fresh Meat");
+                editor.apply();
+                editor.putString("title list", "Fresh Meat");
+                editor.apply();
+                editor.putInt("# achievements", 1);
+                editor.apply();
+                editor.putString("achievements", "Danger Seeker");
+                editor.apply();
+                editor.putString("achievement list", "Danger Seeker");
+                editor.apply();
+                editor.putInt("xp", 0);
+                editor.apply();
+                editor.putInt("personal best", 0);
+                editor.apply();
+                editor.putBoolean("profile access", true);
+                editor.apply();
+                doDataAddToDb(userNameString, "Fresh Meat");    // Add this user's information to Firebase
 
-                    // Update shared preferences with default values for the user profile
-                    editor.putString("username", userNameString);
-                    editor.apply();
-                    editor.putInt("level", 1);
-                    editor.apply();
-                    editor.putInt("seconds walked", 0);
-                    editor.apply();
-                    editor.putInt("steps walked", 0);
-                    editor.apply();
-                    editor.putInt("# titles", 1);
-                    editor.apply();
-                    editor.putString("title", "Fresh Meat");
-                    editor.apply();
-                    editor.putString("title list", "Fresh Meat");
-                    editor.apply();
-                    editor.putInt("# achievements", 1);
-                    editor.apply();
-                    editor.putString("achievements", "Danger Seeker");
-                    editor.apply();
-                    editor.putInt("xp", 0);
-                    editor.apply();
-                    editor.putInt("personal best", 0);
-                    editor.apply();
-                    doDataAddToDb(userNameString, "Fresh Meat");    // Add this user's information to Firebase
-                    String newTitleEarned = getResources().getString(R.string.new_title_earned);    // Get the initial title from string resources
-                    Toast.makeText(MainActivity.this,newTitleEarned,Toast.LENGTH_SHORT).show();  // Let the user know they have earned a default new player title
+                // Set default notification preferences in case the user does not set them all
+                editor.putInt("intervalMinutes", 30);
+                editor.apply();
 
-                    // Set default notification preferences in case the user does not set them all
-                    editor.putInt("intervalMinutes", 30);
-                    editor.apply();
+                // Set the initial startup flag so that it does not ask again
+                editor.putBoolean("initial startup", false);
+                editor.apply();
+            }
+        });
+        startDialog = startBuilder.create();
+
+
+        // Add text changed listener to ensure that the user has entered some username information before they can continue
+        // as the username cannot be changed once submitted
+        usernameEntry.addTextChangedListener(new TextWatcher() {
+            private void handleText() {
+                // Grab the button
+                final Button okButton = startDialog.getButton(AlertDialog.BUTTON_POSITIVE);
+                if(usernameEntry.getText().length() == 0) {
+                    okButton.setEnabled(false);
+                } else {
+                    okButton.setEnabled(true);
                 }
-            });
-            startDialog = startBuilder.create();
+            }
 
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
 
-            // Add text changed listener to ensure that the user has entered some username information before they can continue
-            // as the username cannot be changed once submitted
-            usernameEntry.addTextChangedListener(new TextWatcher() {
-                private void handleText() {
-                    // Grab the button
-                    final Button okButton = startDialog.getButton(AlertDialog.BUTTON_POSITIVE);
-                    if(usernameEntry.getText().length() == 0) {
-                        okButton.setEnabled(false);
-                    } else {
-                        okButton.setEnabled(true);
-                    }
-                }
+            }
 
-                @Override
-                public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
 
-                }
+            }
 
-                @Override
-                public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+            @Override
+            public void afterTextChanged(Editable editable) {
+                handleText();
+            }
+        });
 
-                }
+        // Show the button to submit the user name
+        enterUserName.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Get username from the edit text
+                StringBuilder userName = new StringBuilder();
+                userName.append(usernameEntry.getText());
+                String userNameString = userName.toString();
 
-                @Override
-                public void afterTextChanged(Editable editable) {
-                    handleText();
-                }
-            });
+                // Text view that shows what the user has submitted their name as
+                TextView welcomeUser = (TextView) dialogView.findViewById(R.id.welcome_message);
+                welcomeUser.setText("Welcome " + userNameString + ".");
+                welcomeUser.setVisibility(View.VISIBLE);
+                enterUserName.setVisibility(View.INVISIBLE);
+            }
+        });
 
-            // Show the button to submit the user name
-            enterUserName.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    // Get username from the edit text
-                    StringBuilder userName = new StringBuilder();
-                    userName.append(usernameEntry.getText());
-                    String userNameString = userName.toString();
-
-                    // Text view that shows what the user has submitted their name as
-                    TextView welcomeUser = (TextView) dialogView.findViewById(R.id.welcome_message);
-                    welcomeUser.setText("Welcome " + userNameString + ".");
-                    welcomeUser.setVisibility(View.VISIBLE);
-                    enterUserName.setVisibility(View.INVISIBLE);
-                }
-            });
-        }
 
         startDialog.show();
         startDialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
@@ -246,7 +255,7 @@ public class MainActivity extends AppCompatActivity {
         Map<String, String> friendsList = new HashMap<String, String>();
 
         // Creating a new user for the database
-        User newUser = new User(userNameString, title, date, "n/a", "n/a", uniqueID, friendsList);
+        User newUser = new User(userNameString, title, date, "n/a", "n/a", uniqueID, 1, 1, friendsList);
 
         // Add new node in database
         FirebaseDatabase database = FirebaseDatabase.getInstance();

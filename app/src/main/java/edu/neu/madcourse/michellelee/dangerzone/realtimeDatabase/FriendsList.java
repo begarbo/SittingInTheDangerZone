@@ -158,11 +158,6 @@ public class FriendsList extends AppCompatActivity {
         // Set up dummy friend node
         FirebaseDatabase database = FirebaseDatabase.getInstance();
         DatabaseReference myRef = database.getReference("users").child(uid).child("friends");
-//        myRef.child("friend").setValue("");
-
-//        FirebaseDatabase database = FirebaseDatabase.getInstance();
-//        DatabaseReference myRef = database.getReference().child(uid).child("friends");
-//        myRef.child("friend").setValue("");
     }
 
     @Override
@@ -196,27 +191,6 @@ public class FriendsList extends AppCompatActivity {
         }
     }
 
-//    @Override
-//    protected void onStart() {
-//        super.onStart();
-//        Log.e("on START has","been called");
-////        initializeListAdapter();    // Initialize the list adapter so our friends show each time
-//    }
-//
-//    @Override
-//    protected void onResume() {
-//        super.onResume();
-//        Log.e("on RESUME has","been called");
-////        initializeListAdapter();    // Initialize the list adapter so our friends show each time
-//    }
-//
-//    @Override
-//    protected void onPostResume() {
-//        super.onPostResume();
-////        initializeListAdapter();    // Initialize the list adapter so our friends show each time
-//        Log.e("on POST resume has","been called");
-//
-//    }
 
     /**
      * Add a new friend to this user if the friend ID is valid
@@ -224,7 +198,7 @@ public class FriendsList extends AppCompatActivity {
      */
     private void addFriend(final String friendsID) {
         // Get ID reference for node in question
-        String uniqueID = preferences.getString("uid", null);
+        final String uniqueID = preferences.getString("uid", null);
 
         // Accessing database contents
         DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference();
@@ -247,6 +221,14 @@ public class FriendsList extends AppCompatActivity {
                 if (!foundID) {
                     Toast.makeText(FriendsList.this, "Invalid ID",Toast.LENGTH_LONG).show();    // Indicate to the user the ID was not valid
                     return; // Return as no friend information will be added
+                } else {
+                    // Add this ID to the user's friend list
+                    FirebaseDatabase database = FirebaseDatabase.getInstance();
+                    DatabaseReference myRef = database.getReference("users").child(uniqueID).child("friends");
+                    myRef.push().setValue(friendsID);
+
+                    // Update friends list
+                    updateFriendsList(friendsID);
                 }
             }
 
@@ -255,14 +237,6 @@ public class FriendsList extends AppCompatActivity {
         };
         mRef.addListenerForSingleValueEvent(eventListener);
 
-
-        // Add this ID to the user's friend list
-        FirebaseDatabase database = FirebaseDatabase.getInstance();
-        DatabaseReference myRef = database.getReference("users").child(uniqueID).child("friends");
-        myRef.push().setValue(friendsID);
-
-        // Update friends list
-        updateFriendsList(friendsID);
     }
 
     /**
@@ -327,7 +301,13 @@ public class FriendsList extends AppCompatActivity {
                         String title = userSnapshot.child("title").getValue(String.class);
                         String lastPlayed = userSnapshot.child("lastPlayed").getValue(String.class);
                         String lastEncounter = userSnapshot.child("lastEncounter").getValue(String.class);
-                        String friendInfo = nodeID+ "\nName: "+username+" ("+title+") "+"\nActive: "+lastPlayed+" "+lastEncounter;
+                        String lastOutcome = userSnapshot.child("lastOutcome").getValue(String.class);
+                        int level = userSnapshot.child("level").getValue(Integer.class);
+                        int achievement = userSnapshot.child("achievements").getValue(Integer.class);
+                        String friendInfo = "ID: " + nodeID + " LVL" + level +
+                                "\nName: " + username + " (" + title + ") " +
+                                "\nActive: " + lastPlayed + " " + lastEncounter + "..." + lastOutcome +
+                                "\nAchievements: " + achievement;
                         friendAdapter.add(friendInfo);
                         break;  // Have found the friend node, can populate friend information
                     }

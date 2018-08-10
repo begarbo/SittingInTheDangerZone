@@ -7,10 +7,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
@@ -22,22 +19,22 @@ import android.widget.Toast;
 
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.iid.FirebaseInstanceId;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.Locale;
 
 import edu.neu.madcourse.michellelee.dangerzone.realtimeDatabase.FriendsList;
 
+/**
+ * Shows the user information including a summary of app usage and provides a link to the friends list of the user.
+ */
 public class UserProfileActivity extends AppCompatActivity {
 
     SharedPreferences preferences;
     SharedPreferences.Editor editor;
 
     private AlertDialog titleDialog;
-
+    private AlertDialog firstTimerTitleDialog;
+    private AlertDialog firstTimerAchievementDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +44,12 @@ public class UserProfileActivity extends AppCompatActivity {
         // Initialize Shared Preferences
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
         editor = preferences.edit();
+
+        // Check if this is the first time this screen has been accessed because we want to
+        // congratulate the user for playing by giving them a new title and a new achievement
+        if (preferences.getBoolean("profile access", true)) {
+            isInitialStartup();
+        }
 
         // Get user information
         final String name = preferences.getString("username", null);
@@ -62,17 +65,16 @@ public class UserProfileActivity extends AppCompatActivity {
         int minutesWalked = secondsWalked / 60;
         int distanceWalked = (int) Math.rint(stepsWalked * 0.000762);
 
-        // Hooking up achievements with adapters
+        // Hooking up titles and achievements with adapters
         ArrayList<String> itemList1 = new ArrayList<String>();
         ArrayAdapter<String> titlesAdapter = new ArrayAdapter<String>(this, R.layout.list_item_profile, itemList1);
         ListView titlesList = (ListView) findViewById(R.id.titles_list);
         titlesList.setAdapter(titlesAdapter);
-//        titlesAdapter.add("title1");
+
         ArrayList<String> itemList2 = new ArrayList<String>();
         ArrayAdapter<String> achievementsAdapter = new ArrayAdapter<String>(this, R.layout.list_item_profile, itemList2);
         ListView achievementsList = (ListView) findViewById(R.id.achievements_list);
         achievementsList.setAdapter(achievementsAdapter);
-//        achievementsAdapter.add("title1");
 
         // TEST FOR TITLES AND ACHIEVEMENTS PROCESSING
         // Special Processing to Retrieve: Get the String which contains all the titles. Split into an array based on the ","
@@ -136,8 +138,8 @@ public class UserProfileActivity extends AppCompatActivity {
             editor.putString("title", selected);
             editor.apply();
             String titleChanged = getResources().getString(R.string.title_change);
-            Toast.makeText(UserProfileActivity.this,titleChanged,Toast.LENGTH_LONG).show();
-            dataAddAppInstance(name, selected);
+            Toast.makeText(UserProfileActivity.this,titleChanged,Toast.LENGTH_SHORT).show();
+            dataAddAppInstance(selected);
             }
         });
 
@@ -155,14 +157,10 @@ public class UserProfileActivity extends AppCompatActivity {
 
     /**
      * Method to change the title name to be displayed to the friend's list
-     * @param name username of the person we are changing
      * @param title title that is being changed to
      */
-    public void dataAddAppInstance(String name, String title) {
-        // Get token for this app instance
-//        String token = FirebaseInstanceId.getInstance().getToken();
-
-        // Get ID reference for node in question
+    public void dataAddAppInstance(String title) {
+         // Get ID reference for node in question
         String uniqueID =  preferences.getString("uid", null);
 
         // Update firebase
@@ -170,4 +168,45 @@ public class UserProfileActivity extends AppCompatActivity {
         DatabaseReference myRef = database.getReference("users");
         myRef.child(uniqueID).child("title").setValue(title);
     }
+
+    /**
+     * Initial startup routine that displays the new players title and achievement for starting
+     * the app for the first time
+     */
+    private void isInitialStartup() {
+        // Set the access flag so that it does not show the dialog again
+        editor.putBoolean("profile access", false);
+        editor.apply();
+
+        final LayoutInflater startInflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+
+        // Title dialog with new title information
+        final View titleView = startInflater.inflate(R.layout.first_title, null);
+
+        // Make this dialog pop up and set the conditions for dismissal
+        final AlertDialog.Builder firstTitleBuilder = new AlertDialog.Builder(this);
+        firstTitleBuilder.setView(titleView);
+        firstTitleBuilder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+               firstTimerTitleDialog.dismiss();
+                // Achievement dialog with new achievement information
+                final View achievementView = startInflater.inflate(R.layout.first_achievement, null);
+
+                // Make this dialog pop up and set the conditions for dismissal
+                final AlertDialog.Builder firstAchievementBuilder = new AlertDialog.Builder(UserProfileActivity.this);
+                firstAchievementBuilder.setView(achievementView);
+                firstAchievementBuilder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        firstTimerAchievementDialog.dismiss();
+                    }
+                });
+                firstTimerAchievementDialog = firstAchievementBuilder.create();
+                firstTimerAchievementDialog.show();
+            }
+        });
+        firstTimerTitleDialog = firstTitleBuilder.create();
+        firstTimerTitleDialog.show();
+
+    }
+
 }

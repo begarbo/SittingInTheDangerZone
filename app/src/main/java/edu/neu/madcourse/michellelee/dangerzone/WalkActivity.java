@@ -1,10 +1,10 @@
 package edu.neu.madcourse.michellelee.dangerzone;
 
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.media.AudioManager;
-import android.media.SoundPool;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 
 import android.hardware.Sensor;
@@ -13,8 +13,11 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.CountDownTimer;
 import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -25,6 +28,10 @@ import java.util.Random;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * The game activity of the app. It runs a timer for a user specified amount of time and records the steps
+ * that the user takes.
+ */
 public class WalkActivity extends AppCompatActivity implements SensorEventListener, StepListener {
     //  Step counter variables
     private SimpleStepDetector simpleStepDetector;
@@ -45,10 +52,11 @@ public class WalkActivity extends AppCompatActivity implements SensorEventListen
     private TextView steps;
     private int timerTime;
 
-    // sound
-    public int mSoundAlert, mBackgroundMusic;
-    private SoundPool mSoundPool;
-    private float mVolume = 1f;
+    // Sound
+    private MediaPlayer mMediaPlayer;
+    private Button soundControl;
+    private int length = 0;
+    private int mediaOn = 1;
 
     // Bonus
     private boolean extraTimeMarker = false;
@@ -64,11 +72,44 @@ public class WalkActivity extends AppCompatActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_walk);
 
-        // Initialize Shared Preferences
+        // Start playing background music on startup
+        mMediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.danger_zone);
+        mMediaPlayer.setLooping(true);
+        mMediaPlayer.start();
+
+        // Control to turn music on and off
+        soundControl = (Button) findViewById(R.id.sound_setting);
+        soundControl.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                soundControl.setSelected(!soundControl.isSelected());   // Default position is on since it will play on startup
+                if (soundControl.isSelected()) { // To control what happens once the sound is turned off
+                    length = mMediaPlayer.getCurrentPosition(); // Remember where we paused
+                    mMediaPlayer.pause();
+                    soundControl.setBackgroundResource(R.drawable.sound_off);   // Toggle the image to off
+                    mediaOn = 0;
+                } else {
+                    if (isPaused) {
+                        mediaOn = 1;
+                        soundControl.setBackgroundResource(R.drawable.sound_on);    // Toggle the image to on
+                    } else {
+                        mMediaPlayer.seekTo(length);    // Go to where we left off
+                        mMediaPlayer.start();   // Start music
+                        soundControl.setBackgroundResource(R.drawable.sound_on);    // Toggle the image to on
+                        mediaOn = 1;
+                    }
+                }
+            }
+        });
+
+        // Keeps the screen on during the walk activity
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        // Initialize Shared Preferences to record game information like steps walked
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
         editor = preferences.edit();
 
-        // Get an instance of the SensorManager
+        // Get an instance of the SensorManager that will be used to track the steps during the walk
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         accel = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         simpleStepDetector = new SimpleStepDetector();
@@ -83,11 +124,8 @@ public class WalkActivity extends AppCompatActivity implements SensorEventListen
         btnResume.setClickable(false);  // Resume is disabled while not paused
         btnResume.setEnabled(false);    // Resume is disabled while not paused
 
-        // build vibrator service & soundpool
+        // Build vibrator service & soundpool that will alert the user at different time intervals
         final Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-        mSoundPool = new SoundPool(3, AudioManager.STREAM_MUSIC, 0);
-        mSoundAlert = mSoundPool.load(getApplicationContext(), R.raw.beep_alert, 1);
-        mBackgroundMusic = mSoundPool.load(getApplicationContext(), R.raw.deeper, 1); // music but not hooked up yet
 
         // Default time for CountdownTimer
         long millisInFuture;
@@ -97,25 +135,22 @@ public class WalkActivity extends AppCompatActivity implements SensorEventListen
         timerTime = getIntent().getIntExtra("timer", -1);
         if (timerTime == 1) {
             millisInFuture = 60000;
-//            minSteps = 100;
-//            maxSteps = 140;
+            // Target number of steps that is walkable in a minute is between 40 - 50 for the average adult
             minSteps = 40;
             maxSteps = 50;
         } else if (timerTime == 3) {
             millisInFuture = 180000;
-//            minSteps = 300;
-//            maxSteps = 340;
-            minSteps = 80;
-            maxSteps = 100;
+            // Target number of steps that is walkable in 3 min is between 100 - 125 for the average adult
+            minSteps = 100;
+            maxSteps = 125;
         } else {
             millisInFuture = 300000;
-//            minSteps = 500;
-//            maxSteps = 540;
-            minSteps = 240;
-            maxSteps = 200;
+            // Target number of steps that is walkable in 5 min is between 210 - 250 for the average adult
+            minSteps = 210;
+            maxSteps = 250;
         }
 
-        // Initialize a new CountDownTimer instance
+        // Initialize a new CountDownTimer instance to display how much time is left during the walk
         timer = new CountDownTimer(millisInFuture, countDownInterval) {
             public void onTick(long millisUntilFinished) {
                 long millis = millisUntilFinished;
@@ -125,27 +160,41 @@ public class WalkActivity extends AppCompatActivity implements SensorEventListen
                         TimeUnit.MILLISECONDS.toMinutes(millis),
                         TimeUnit.MILLISECONDS.toSeconds(millis) - TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(millis)));
 
-                // change background resource
-                if (text.equals("00:30")) {
+                // Change background resource to indicate the dinosaur is getting closer
+                if (text.equals("02:30") && timerTime == 5) {
                     RelativeLayout layout =(RelativeLayout)findViewById(R.id.walk_activity);
+                    tView.setTextColor(getResources().getColor(R.color.red_color));
                     layout.setBackgroundResource(R.drawable.scenario_end);
-                    mSoundPool.play(mSoundAlert, mVolume, mVolume, 1, 0, 1f);
+                    v.vibrate(500);
+                }
+                if (text.equals("01:30") && timerTime == 3) {
+                    RelativeLayout layout =(RelativeLayout)findViewById(R.id.walk_activity);
+                    tView.setTextColor(getResources().getColor(R.color.red_color));
+                    layout.setBackgroundResource(R.drawable.scenario_end);
+                    v.vibrate(500);
                 }
 
-                // flash text & vibrate at set times
-                if (text.equals("00:30") || text.equals("00:25") || text.equals("00:20") || text.equals("00:15") ||
-                        text.equals("00:10") || text.equals("00:09") || text.equals("00:08") || text.equals("00:07") || text.equals("00:06") ||
+                if (text.equals("00:30") && timerTime == 1) {
+                    RelativeLayout layout =(RelativeLayout)findViewById(R.id.walk_activity);
+                    tView.setTextColor(getResources().getColor(R.color.red_color));
+                    layout.setBackgroundResource(R.drawable.scenario_end);
+                    v.vibrate(500);
+                }
+
+                // Flash text & vibrate at set times (10 second countdown) so the user knows that time is about to run out and they can adjust their walk speed
+                if (text.equals("00:10") || text.equals("00:09") || text.equals("00:08") || text.equals("00:07") || text.equals("00:06") ||
                         text.equals("00:05") || text.equals("00:04") || text.equals("00:03") || text.equals("00:02") || text.equals("00:01")) {
                     tView.setTextColor(getResources().getColor(R.color.red_color));
                     v.vibrate(500);
+                } else {
+                    tView.setTextColor(getResources().getColor(R.color.white));
                 }
-                else tView.setTextColor(getResources().getColor(R.color.white));
 
                 if (isPaused) {             // Cancel current instance if paused
-                btnResume.setClickable(true);  // Resume is enabled while paused
-                btnResume.setEnabled(true);    // Resume is enabled while paused
-                onPause();
-                cancel();
+                    btnResume.setClickable(true);  // Resume is enabled while paused
+                    btnResume.setEnabled(true);    // Resume is enabled while paused
+                    onPause();
+                    cancel();
                 } else {
                     tView.setText(text);    // Display current time set above
                     timeRemaining = millisUntilFinished;    // Store remaining time
@@ -159,9 +208,8 @@ public class WalkActivity extends AppCompatActivity implements SensorEventListen
                 btnResume.setEnabled(false);
                 btnResume.setClickable(false);
 
-                // vibrate alert
+                // Vibrate alert
                 v.vibrate(500);
-                mSoundPool.play(mSoundAlert, mVolume, mVolume, 1, 0, 1f);
 
                 // Perform calculations and actions to start EndWalk screen
                 finishTransition();
@@ -227,21 +275,6 @@ public class WalkActivity extends AppCompatActivity implements SensorEventListen
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-//        numSteps = 0;
-//        textView.setText(TEXT_NUM_STEPS + numSteps);
-        steps.setText(TEXT_NUM_STEPS + numSteps);
-        sensorManager.registerListener(this, accel, SensorManager.SENSOR_DELAY_FASTEST);
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        sensorManager.unregisterListener(this);
-    }
-
-    @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
     }
 
@@ -256,7 +289,6 @@ public class WalkActivity extends AppCompatActivity implements SensorEventListen
     @Override
     public void step(long timeNs) {
         numSteps++;
-//        textView.setText(TEXT_NUM_STEPS + numSteps);
         steps.setText(TEXT_NUM_STEPS + numSteps);
     }
 
@@ -318,7 +350,8 @@ public class WalkActivity extends AppCompatActivity implements SensorEventListen
         editor.putInt("seconds walked", seconds);
         editor.apply();
 
-        endScreenIntent.putExtra("seconds summary", (timerTime * 60) + bonusTime); // Pass this session's time to the end screen
+        // Pass this session's time to the end screen
+        endScreenIntent.putExtra("seconds summary", (timerTime * 60) + bonusTime);
 
         // Calculate cumulative steps walked
         endScreenIntent.putExtra("steps summary", numSteps);
@@ -333,4 +366,60 @@ public class WalkActivity extends AppCompatActivity implements SensorEventListen
         startActivity(endScreenIntent);
     }
 
+    /**
+     * Do not want users going back to the start screen, so disable back button.
+     */
+    @Override
+    public void onBackPressed() {
+    }
+
+    /**
+     * Clear the media player when stopped
+     */
+    @Override
+    public void onStop() {
+        super.onStop();
+        if(mMediaPlayer.isPlaying()) {
+            mMediaPlayer.stop();
+        }
+        mMediaPlayer.release();
+        mMediaPlayer = null;
+    }
+
+    /**
+     * Checks if the media player was playing before and if it was, pick up where it left off.
+     */
+    @Override
+    public void onResume() {
+        super.onResume();
+        steps.setText(TEXT_NUM_STEPS + numSteps);
+        sensorManager.registerListener(this, accel, SensorManager.SENSOR_DELAY_FASTEST);
+
+        // If sound was playing, then resume where we were
+        if (mediaOn == 1) {
+            mMediaPlayer.seekTo(length);    // Go to where we left off
+            mMediaPlayer.start();   // Start music
+        } else {
+            return;
+        }
+    }
+
+    /**
+     * If the media player is playing, this remembers where the player was stopped so that on resume
+     * it can pick up where it left off.
+     */
+    @Override
+    public void onPause() {
+        super.onPause();
+//        sensorManager.unregisterListener(this);
+
+        // If music is playing, pause this on pause as well
+        if(mMediaPlayer.isPlaying()) {
+            length = mMediaPlayer.getCurrentPosition(); // Remember where we paused
+            mMediaPlayer.pause();
+            mediaOn = 1;
+        } else {
+            return;
+        }
+    }
 }
